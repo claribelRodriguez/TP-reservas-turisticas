@@ -1,4 +1,7 @@
 package com.app.TPreservasturisticas.dto;
 
-public class AgregarReservaDTO {
-}
+public record AgregarReservaDTO(
+        Long idCliente,
+        Long idActividad,
+        Integer cantidadPersonas
+) {}

@@ -1,4 +1,7 @@
 package com.app.TPreservasturisticas.dto;
 
-public class AgregarPagoDTO {
-}
+public record AgregarPagoDTO (
+        String metodoPago,
+        String cuitTitular,
+        String nombreTitular
+){}
