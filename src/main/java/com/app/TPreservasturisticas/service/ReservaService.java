@@ -8,7 +8,6 @@ import com.app.TPreservasturisticas.exception.ReglaNegocioException;
 import com.app.TPreservasturisticas.repository.*;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +20,7 @@ public class ReservaService {
     private PagoRepository pagoRepository;
     private GuiaRepository guiaRepository;
     private ActividadService actividadService;
+    private static final int DIAS_PLAZO_PAGO = 7;
 
     public ReservaService(ReservaRepository reservaRepository,
                           ClienteRepository clienteRepository,
@@ -48,7 +48,7 @@ public class ReservaService {
             throw new IllegalArgumentException("la cantidad de personas tiene que ser mayor a 0");
         }
 
-        List<Reserva> reservasPrevias = reservaRepository.findById_ClienteAndId_ActividadAndEstadoNot(
+        List<Reserva> reservasPrevias = reservaRepository.findByCliente_IdAndActividad_IdAndEstadoNot(
                 cliente.getId(), actividad.getId(), EstadoReserva.CANCELADA);
 
         if(!reservasPrevias.isEmpty()) {
@@ -125,7 +125,7 @@ public class ReservaService {
         promoverListaEspera(reserva.getActividad().getId());
     }
 
-    public Reserva registrarPago(Long idReserva, AgregarPagoDTO pagoDTO, int diasPlazo) {
+    public Reserva registrarPago(Long idReserva, AgregarPagoDTO pagoDTO) {
         Reserva reserva = obtenerPorId(idReserva);
 
         if (reserva.getEstado() != EstadoReserva.CONFIRMADA) {
@@ -133,7 +133,7 @@ public class ReservaService {
         }
 
         // plazo de N dias
-        LocalDate limitePago = reserva.getActividad().getFecha().plusDays(diasPlazo);
+        LocalDate limitePago = reserva.getActividad().getFecha().plusDays(DIAS_PLAZO_PAGO);
         if (LocalDate.now().isAfter(limitePago)) {
             throw new ReglaNegocioException("se vencio el plazo para pagar esta reserva");
         }
@@ -166,11 +166,11 @@ public class ReservaService {
         return reservaRepository.save(reserva);
     }
 
-    public void vencerReservasNoPagadas(int diasPlazo) {
+    public void vencerReservasNoPagadas() {
         List<Reserva> confirmadas = reservaRepository.findAll();
         for (Reserva r : confirmadas) {
             if (r.getEstado() == EstadoReserva.CONFIRMADA) {
-                LocalDate limite = r.getActividad().getFecha().plusDays(diasPlazo);
+                LocalDate limite = r.getActividad().getFecha().plusDays(DIAS_PLAZO_PAGO);
                 if (LocalDate.now().isAfter(limite)) {
                     r.setEstado(EstadoReserva.VENCIDA);
                     if (r.getGuiaAsignado() != null) {

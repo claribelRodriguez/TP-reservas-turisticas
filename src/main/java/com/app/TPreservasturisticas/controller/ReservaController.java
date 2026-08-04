@@ -40,15 +40,15 @@ public class ReservaController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/pagos/{diasPlazo}")
-    public ResponseEntity<Reserva> pagar(@PathVariable Long id, @RequestBody AgregarPagoDTO pagoDto, @PathVariable int diasPlazo) {
-        Reserva actualizada = reservaService.registrarPago(id, pagoDto, diasPlazo);
+    @PostMapping("/{id}/pagos")
+    public ResponseEntity<Reserva> pagar(@PathVariable Long id, @RequestBody AgregarPagoDTO pagoDto) {
+        Reserva actualizada = reservaService.registrarPago(id, pagoDto);
         return ResponseEntity.ok(actualizada);
     }
 
-    @PostMapping("/vencer-ahora/{diasPlazo}")
-    public ResponseEntity<String> vencerAhora(@PathVariable int diasPlazo) {
-        reservaService.vencerReservasNoPagadas(diasPlazo);
+    @PostMapping("/vencer-ahora")
+    public ResponseEntity<String> vencerAhora() {
+        reservaService.vencerReservasNoPagadas();
         return ResponseEntity.ok("listo, se vencieron las reservas que correspondian");
     }
 }

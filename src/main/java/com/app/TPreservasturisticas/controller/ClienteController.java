@@ -18,7 +18,7 @@ public class ClienteController {
     private ClienteService clienteService;
 
     @PostMapping
-    public ResponseEntity<Cliente> agregar(Cliente cliente) {
+    public ResponseEntity<Cliente> agregar(@RequestBody Cliente cliente) {
         if(cliente == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }

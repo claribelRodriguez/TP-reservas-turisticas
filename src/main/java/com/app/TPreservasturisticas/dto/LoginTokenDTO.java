@@ -1,4 +1,5 @@
 package com.app.TPreservasturisticas.dto;
 
-public record LoginTokenDTO() {
-}
+public record LoginTokenDTO(
+        String token
+) {}

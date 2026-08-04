@@ -17,7 +17,7 @@ public class GuiaController {
     private GuiaService guiaService;
 
     @PostMapping
-    public ResponseEntity<Guia> agregar(Guia guia) {
+    public ResponseEntity<Guia> agregar(@RequestBody Guia guia) {
         if(guia == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -30,7 +30,7 @@ public class GuiaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Guia> obtenerPorId(Long id) {
+    public ResponseEntity<Guia> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(guiaService.obtenerPorId(id));
     }
 
@@ -40,7 +40,8 @@ public class GuiaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Guia> modificar(Long id, Guia guia) {
+    public ResponseEntity<Guia> modificar(@PathVariable Long id,
+                                          @RequestBody Guia guia) {
         if(guia == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -48,7 +49,7 @@ public class GuiaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarPorId(Long id) {
+    public ResponseEntity<Void> eliminarPorId(@PathVariable Long id) {
         guiaService.eliminarPorId(id);
         return ResponseEntity.noContent().build();
     }

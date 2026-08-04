@@ -4,9 +4,11 @@ import com.app.TPreservasturisticas.entity.Guia;
 import com.app.TPreservasturisticas.exception.NoEncontradoException;
 import com.app.TPreservasturisticas.repository.GuiaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class GuiaService {
     @Autowired
     private GuiaRepository guiaRepository;

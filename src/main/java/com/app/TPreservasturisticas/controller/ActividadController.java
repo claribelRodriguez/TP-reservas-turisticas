@@ -55,7 +55,7 @@ public class ActividadController {
         return ResponseEntity.ok(reporte);
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     public ResponseEntity<Actividad> modificar(@PathVariable Long id,
                                                @RequestBody Actividad actividad) {
         if(actividad == null) {
@@ -71,7 +71,7 @@ public class ActividadController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarPorId(@PathVariable Long id) {
         actividadService.eliminarPorId(id);
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 
     //Extraigo las validaciones, más prolijo
