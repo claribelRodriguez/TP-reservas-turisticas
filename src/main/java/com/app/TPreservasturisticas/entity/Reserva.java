@@ -21,28 +21,28 @@ public class Reserva {
     @JoinColumn(name = "id_cliente")
     private Cliente cliente;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "id_actividad")
-    private Actividad actividad;
-
-    @Column(nullable = false)
+    @Column(name = "cantidad_personas", nullable = false)
     private Integer cantidadPersonas;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoReserva estado;
 
-    @Column(nullable = false)
+    @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 
-    @Column(nullable = false)
+    @Column(name = "precio_total", nullable = false)
     private Double precioTotal;
 
     @OneToOne(mappedBy = "reserva", cascade = CascadeType.ALL)
     private Pago pago;
 
     @ManyToOne
-    @JoinColumn(name = "id_guia")
+    @JoinColumn(name = "guia_id")
     private Guia guiaAsignado;
+
+    @ManyToOne
+    @JoinColumn(name = "experiencia_id")
+    private ExperienciaTuristica experiencia;
 }
 

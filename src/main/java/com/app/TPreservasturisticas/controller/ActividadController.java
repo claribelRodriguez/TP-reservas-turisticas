@@ -1,6 +1,5 @@
 package com.app.TPreservasturisticas.controller;
 
-import com.app.TPreservasturisticas.dto.ReporteOcupacionDTO;
 import com.app.TPreservasturisticas.entity.Actividad;
 import com.app.TPreservasturisticas.service.ActividadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,21 +39,6 @@ public class ActividadController {
         return ResponseEntity.ok(actividadService.obtenerTodas());
     }
 
-    @GetMapping("/{id}/ocupacion")
-    public ResponseEntity<ReporteOcupacionDTO> ocupacion(@PathVariable Long id) {
-        Actividad actividad = actividadService.obtenerPorId(id);
-        int ocupacion = actividadService.getCapacidadOcupada(id);
-
-        ReporteOcupacionDTO reporte = new ReporteOcupacionDTO(
-                actividad.getNombre(),
-                actividad.getCapacidadMaxima(),
-                ocupacion,
-                actividad.getCapacidadMaxima() - ocupacion
-        );
-
-        return ResponseEntity.ok(reporte);
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<Actividad> modificar(@PathVariable Long id,
                                                @RequestBody Actividad actividad) {
@@ -77,12 +61,13 @@ public class ActividadController {
     //Extraigo las validaciones, más prolijo
     private Boolean validacionDatosActividad(Actividad actividad) {
         boolean nombreVacio = actividad.getNombre().isEmpty();
-        boolean fechaNull = actividad.getFecha() == null;
+        boolean fechaInicioNull = actividad.getFechaInicio() == null;
+        boolean fechaFinNull = actividad.getFechaFin() == null;
         boolean capacidadNull = actividad.getCapacidadMaxima() == null;
         boolean precioBaseNull = actividad.getPrecioBase() == null;
         boolean porcentajeCorrecto = actividad.getPorcentajeDescuento() >= 0 && actividad.getPorcentajeDescuento() <= 100;
 
         //si da true los campos estan bien
-        return !nombreVacio && !fechaNull && !capacidadNull && !precioBaseNull && porcentajeCorrecto;
+        return !nombreVacio && !fechaInicioNull && !capacidadNull && !precioBaseNull && porcentajeCorrecto;
     }
 }

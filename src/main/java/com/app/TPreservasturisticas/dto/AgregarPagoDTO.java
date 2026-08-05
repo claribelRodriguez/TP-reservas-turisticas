@@ -1,7 +1,9 @@
 package com.app.TPreservasturisticas.dto;
 
+import com.app.TPreservasturisticas.entity.MetodoPago;
+
 public record AgregarPagoDTO (
-        String metodoPago,
+        MetodoPago metodoPago,
         String cuitTitular,
         String nombreTitular
 ){}

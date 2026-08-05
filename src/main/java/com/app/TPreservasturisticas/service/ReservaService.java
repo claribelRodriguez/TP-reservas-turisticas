@@ -16,24 +16,21 @@ import java.util.List;
 public class ReservaService {
     private ReservaRepository reservaRepository;
     private ClienteRepository clienteRepository;
-    private ActividadRepository actividadRepository;
     private PagoRepository pagoRepository;
     private GuiaRepository guiaRepository;
-    private ActividadService actividadService;
+    private ExperienciaTuristicaRepository experienciaTuristicaRepository;
     private static final int DIAS_PLAZO_PAGO = 7;
 
     public ReservaService(ReservaRepository reservaRepository,
                           ClienteRepository clienteRepository,
-                          ActividadRepository actividadRepository,
                           PagoRepository pagoRepository,
                           GuiaRepository guiaRepository,
-                          ActividadService actividadService) {
+                          ExperienciaTuristicaRepository experienciaTuristicaRepository) {
         this.reservaRepository = reservaRepository;
         this.clienteRepository = clienteRepository;
-        this.actividadRepository = actividadRepository;
         this.pagoRepository = pagoRepository;
         this.guiaRepository = guiaRepository;
-        this.actividadService = actividadService;
+        this.experienciaTuristicaRepository = experienciaTuristicaRepository;
     }
 
     //POST
@@ -41,36 +38,40 @@ public class ReservaService {
         Cliente cliente = clienteRepository.findById(reservaDTO.idCliente())
                 .orElseThrow(() -> new NoEncontradoException("no existe el cliente " + reservaDTO.idCliente()));
 
-        Actividad actividad = actividadRepository.findById(reservaDTO.idActividad())
-                .orElseThrow(() -> new NoEncontradoException("no existe la actividad " + reservaDTO.idActividad()));
+        ExperienciaTuristica experiencia = experienciaTuristicaRepository.findById(reservaDTO.idExperiencia())
+                .orElseThrow(() -> new NoEncontradoException("no existe la experiencia no existe"));
 
         if (reservaDTO.cantidadPersonas() == null || reservaDTO.cantidadPersonas() <= 0) {
-            throw new IllegalArgumentException("la cantidad de personas tiene que ser mayor a 0");
+            throw new ReglaNegocioException("la cantidad de personas tiene que ser mayor a 0");
         }
 
-        List<Reserva> reservasPrevias = reservaRepository.findByCliente_IdAndActividad_IdAndEstadoNot(
-                cliente.getId(), actividad.getId(), EstadoReserva.CANCELADA);
+        if(experiencia.getFechaInicio() == null && experiencia.getFechaFin() == null) {
+            throw new ReglaNegocioException("para poder registrar la actividad debe tener las fechas de inicio y fin estipuladas");
+        }
+
+        List<Reserva> reservasPrevias = reservaRepository.findByCliente_IdAndExperiencia_IdAndEstadoNot(
+                cliente.getId(), experiencia.getId(), EstadoReserva.CANCELADA);
 
         if(!reservasPrevias.isEmpty()) {
             throw new ReglaNegocioException("el cliente ya tiene una reserva para esta actividad");
         }
 
-        int ocupada = actividadService.getCapacidadOcupada(actividad.getId());
-        int restante = actividad.getCapacidadMaxima() - ocupada;
+        int ocupada = getCapacidadOcupada(experiencia.getId());
+        int restante = experiencia.getCapacidadMaxima() - ocupada;
 
-        Double precio = calcularPrecio(actividad, reservaDTO.cantidadPersonas());
+        Double precio = calcularPrecio(experiencia, reservaDTO.cantidadPersonas());
 
         Reserva reserva = new Reserva();
         reserva.setCliente(cliente);
-        reserva.setActividad(actividad);
+        reserva.setExperiencia(experiencia);
         reserva.setCantidadPersonas(reservaDTO.cantidadPersonas());
         reserva.setFechaCreacion(LocalDateTime.now());
         reserva.setPrecioTotal(precio);
 
         if (reservaDTO.cantidadPersonas() <= restante) {
 
-            // si la actividad requiere guia, busco uno disponible. si no hay, mando a lista de espera
-            if (Boolean.TRUE.equals(actividad.getRequiereGuia())) {
+            // si la experiencia requiere guia, busco uno disponible. si no hay, mando a lista de espera
+            if (Boolean.TRUE.equals(experiencia.getRequiereGuia())) {
                 List<Guia> disponibles = guiaRepository.findByDisponibleTrue();
                 if (disponibles.isEmpty()) {
                     reserva.setEstado(EstadoReserva.LISTA_ESPERA);
@@ -122,7 +123,7 @@ public class ReservaService {
         reservaRepository.save(reserva);
 
         // libero capacidad y trato de promover gente de la lista de espera
-        promoverListaEspera(reserva.getActividad().getId());
+        promoverListaEspera(reserva.getExperiencia().getId());
     }
 
     public Reserva registrarPago(Long idReserva, AgregarPagoDTO pagoDTO) {
@@ -133,28 +134,21 @@ public class ReservaService {
         }
 
         // plazo de N dias
-        LocalDate limitePago = reserva.getActividad().getFecha().plusDays(DIAS_PLAZO_PAGO);
+        LocalDate limitePago = reserva.getExperiencia().getFechaInicio().plusDays(DIAS_PLAZO_PAGO);
         if (LocalDate.now().isAfter(limitePago)) {
             throw new ReglaNegocioException("se vencio el plazo para pagar esta reserva");
         }
 
-        MetodoPago metodo;
-        try {
-            metodo = MetodoPago.valueOf(pagoDTO.metodoPago().toUpperCase());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("metodo de pago invalido, tiene que ser EFECTIVO o TRANSFERENCIA");
-        }
-
-        if (metodo == MetodoPago.TRANSFERENCIA) {
+        if (pagoDTO.metodoPago() == MetodoPago.TRANSFERENCIA) {
             if (pagoDTO.cuitTitular() == null || pagoDTO.cuitTitular().isBlank()
                     || pagoDTO.nombreTitular() == null || pagoDTO.nombreTitular().isBlank()) {
-                throw new IllegalArgumentException("para transferencia hay que informar cuit y titular");
+                throw new ReglaNegocioException("para transferencia hay que informar cuit y titular");
             }
         }
 
         Pago pago = new Pago();
         pago.setReserva(reserva);
-        pago.setMetodo(metodo);
+        pago.setMetodo(pagoDTO.metodoPago());
         pago.setMonto(reserva.getPrecioTotal());
         pago.setFecha(LocalDateTime.now());
         pago.setCuitTitular(pagoDTO.cuitTitular());
@@ -167,29 +161,27 @@ public class ReservaService {
     }
 
     public void vencerReservasNoPagadas() {
-        List<Reserva> confirmadas = reservaRepository.findAll();
+        List<Reserva> confirmadas = reservaRepository.getReservasPorEstado(EstadoReserva.CONFIRMADA);
         for (Reserva r : confirmadas) {
-            if (r.getEstado() == EstadoReserva.CONFIRMADA) {
-                LocalDate limite = r.getActividad().getFecha().plusDays(DIAS_PLAZO_PAGO);
-                if (LocalDate.now().isAfter(limite)) {
-                    r.setEstado(EstadoReserva.VENCIDA);
-                    if (r.getGuiaAsignado() != null) {
-                        r.getGuiaAsignado().setDisponible(true);
-                        guiaRepository.save(r.getGuiaAsignado());
-                    }
-                    reservaRepository.save(r);
-                    promoverListaEspera(r.getActividad().getId());
+            LocalDate limite = r.getExperiencia().getFechaInicio().plusDays(DIAS_PLAZO_PAGO);
+            if (LocalDate.now().isAfter(limite)) {
+                r.setEstado(EstadoReserva.VENCIDA);
+                if (r.getGuiaAsignado() != null) {
+                    r.getGuiaAsignado().setDisponible(true);
+                    guiaRepository.save(r.getGuiaAsignado());
                 }
+                reservaRepository.save(r);
+                promoverListaEspera(r.getExperiencia().getId());
             }
         }
     }
 
-    private void promoverListaEspera(Long idActividad) {
-        Actividad actividad = actividadRepository.findById(idActividad).orElseThrow();
-        List<Reserva> enEspera = reservaRepository.findByActividad_IdAndEstadoOrderByFechaCreacionAsc(
-                idActividad, EstadoReserva.LISTA_ESPERA);
+    private void promoverListaEspera(Long experienciaId) {
+        ExperienciaTuristica experiencia = experienciaTuristicaRepository.findById(experienciaId).orElseThrow();
+        List<Reserva> enEspera = reservaRepository.findByExperiencia_IdAndEstadoOrderByFechaCreacionAsc(
+                experienciaId, EstadoReserva.LISTA_ESPERA);
 
-        int restante = actividad.getCapacidadMaxima() - actividadService.getCapacidadOcupada(idActividad);
+        int restante = experiencia.getCapacidadMaxima() - getCapacidadOcupada(experienciaId);
 
         for (Reserva r : enEspera) {
             if (r.getCantidadPersonas() <= restante) {
@@ -200,14 +192,21 @@ public class ReservaService {
         }
     }
 
-    private Double calcularPrecio(Actividad actividad, int cantidadPersonas) {
-        Double precio = actividad.getPrecioBase() * cantidadPersonas;
+    private Double calcularPrecio(ExperienciaTuristica experiencia, int cantidadPersonas) {
+        Double precio = experiencia.getPrecioBase() * cantidadPersonas;
 
-        if (cantidadPersonas > actividad.getUmbralDescuento()) {
-            Double descuento = (precio * actividad.getPorcentajeDescuento()) / 100.0;
+        if (cantidadPersonas > experiencia.getUmbralDescuento()) {
+            Double descuento = (precio * experiencia.getPorcentajeDescuento()) / 100.0;
             precio = precio - descuento;
         }
 
         return precio;
+    }
+
+    public int getCapacidadOcupada(Long idActividad) {
+        //Obtengo la cantidad de personas que para una actividad su estado sea CONFIRMADA o PAGADA
+        int cantPersonasReservaConfirmada = reservaRepository.getCantidadPersonasReservaPorEstado(idActividad, EstadoReserva.CONFIRMADA);
+        int cantPersonasReservaPagada = reservaRepository.getCantidadPersonasReservaPorEstado(idActividad, EstadoReserva.PAGADA);
+        return cantPersonasReservaConfirmada + cantPersonasReservaPagada;
     }
 }

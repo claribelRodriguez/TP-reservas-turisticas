@@ -37,13 +37,6 @@ public class ActividadService {
         return actividadRepository.findAll();
     }
 
-    public int getCapacidadOcupada(Long idActividad) {
-        //Obtengo la cantidad de personas que para una actividad su estado sea CONFIRMADA o PAGADA
-        int cantPersonasReservaConfirmada = reservaRepository.getCantidadPersonasReservaPorEstado(idActividad, EstadoReserva.CONFIRMADA);
-        int cantPersonasReservaPagada = reservaRepository.getCantidadPersonasReservaPorEstado(idActividad, EstadoReserva.PAGADA);
-        return cantPersonasReservaConfirmada + cantPersonasReservaPagada;
-    }
-
     //PUT
     @Transactional
     public Actividad modificar(Long id, Actividad actividad) {
